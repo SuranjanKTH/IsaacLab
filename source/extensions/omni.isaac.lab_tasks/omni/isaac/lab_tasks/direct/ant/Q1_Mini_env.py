@@ -6,21 +6,19 @@
 from __future__ import annotations
 
 import omni.isaac.lab.sim as sim_utils
-from omni.isaac.lab.assets import ArticulationCfg
-from omni.isaac.lab.envs import DirectRLEnvCfg
+from omni.isaac.lab.assets import Articulation, ArticulationCfg
+from omni.isaac.lab.envs import DirectRLEnv, DirectRLEnvCfg
 from omni.isaac.lab.scene import InteractiveSceneCfg
 from omni.isaac.lab.sim import SimulationCfg
-from omni.isaac.lab.terrains import TerrainImporterCfg
+from omni.isaac.lab.sim.spawners.from_files import GroundPlaneCfg, spawn_ground_plane
 from omni.isaac.lab.utils import configclass
+from omni.isaac.lab.utils.math import sample_uniform
 
-from omni.isaac.lab_tasks.direct.locomotion.locomotion_env import LocomotionEnv
+# from omni.isaac.lab_tasks.direct.locomotion.locomotion_env import LocomotionEnv
 
 from omni.isaac.lab.actuators import ImplicitActuatorCfg
 
-gear = 1.5
-Q1_effort_limit = 0.0       #Doesn't seem to have any effect
-Q1_velocity_limit = 0.0     #Doesn't seem to have any effect
-Q1_damping = 5.0*gear            #kg/s
+gear = 1
 
 Q1_CFG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
@@ -40,7 +38,7 @@ Q1_CFG = ArticulationCfg(
         copy_from_source=False,
     ),
     init_state=ArticulationCfg.InitialStateCfg(
-        pos=(0.0, 0.0, 0.1),  # Position slightly above ground for initialization
+        pos=(0.0, 0.0, 0.05),  # Position slightly above ground for initialization
         joint_pos={
             "BASE_Revolute_1": 0.0,
             "BASE_Revolute_3": 0.0,
@@ -51,12 +49,15 @@ Q1_CFG = ArticulationCfg(
             "Coxa_FL_Revolute_6": 0.0,
             "Coxa_BR_Revolute_8": 0.0,
         },
+        # orientation=(0.0, 0.0, 0.0, 1.0),  # Quaternion representing initial orientation
+
     ),
     actuators={
         "body": ImplicitActuatorCfg(
             joint_names_expr=[".*"],
+            velocity_limit=10.0,
             stiffness=0.0,
-            damping=50.0,
+            damping=0.0,
         ),
     },
 )
@@ -68,7 +69,7 @@ class Q1MiniEnvCfg(DirectRLEnvCfg):
     # Env parameters
     episode_length_s = 5.0
     decimation = 2
-    action_scale = 0.5
+    action_scale = 0.2
     action_space = 8  # Adjust according to your robot
     observation_space = 36
     state_space = 0
@@ -82,8 +83,8 @@ class Q1MiniEnvCfg(DirectRLEnvCfg):
         physics_material=sim_utils.RigidBodyMaterialCfg(
             friction_combine_mode="average",
             restitution_combine_mode="average",
-            static_friction=1.0,
-            dynamic_friction=1.0,
+            static_friction=1.00,
+            dynamic_friction=1.00,
             restitution=0.0,
         ),
         debug_vis=False,
@@ -98,15 +99,14 @@ class Q1MiniEnvCfg(DirectRLEnvCfg):
 
     # Reward parameters
     heading_weight: float = 0.5
-    up_weight: float = 0.001
-
-    energy_cost_scale: float = 0.0
+    up_weight: float = 0.1
+    energy_cost_scale: float = 0.05
     actions_cost_scale: float = 0.005
     alive_reward_scale: float = 0.5
-    dof_vel_scale: float = 0.01
+    dof_vel_scale: float = 0.2
 
     death_cost: float = -2.0
-    termination_height: float = 0.028
+    termination_height: float = 0.0
 
     angular_velocity_scale: float = 1.0
     contact_force_scale: float = 0.1

@@ -255,6 +255,8 @@ def compute_intermediate_values(
     )
 
     dof_pos_scaled = torch_utils.maths.unscale(dof_pos, dof_lower_limits, dof_upper_limits)
+    # print("DOF Lower Limits:", dof_lower_limits)
+    # print("DOF Upper Limits:", dof_upper_limits)
 
     to_target = targets - torso_position
     to_target[:, 2] = 0.0
