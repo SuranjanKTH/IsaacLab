@@ -23,7 +23,8 @@ from omni.isaac.lab.actuators import ImplicitActuatorCfg
 
 
 servo_effort_limit = 5.0
-servo_velocity_limit = 1.0
+servo_velocity_limit = 100.0
+servo_damping = 50.0
 Q1_CFG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
         usd_path="C:/Users/Suranjan/AppData/Local/ov/pkg/isaac-lab/IsaacLab/Q1_Mini/Q1_Assembly/Q1_Mini_Test.usd",
@@ -50,56 +51,56 @@ Q1_CFG = ArticulationCfg(
             effort_limit=servo_effort_limit,
             velocity_limit=servo_velocity_limit,
             stiffness=0.0,
-            damping=10.0,
+            damping=servo_damping,
         ),
         "base_actuator_3": ImplicitActuatorCfg(
             joint_names_expr=["BASE_Revolute_3"],
             effort_limit=servo_effort_limit,
             velocity_limit=servo_velocity_limit,
             stiffness=0.0,
-            damping=10.0,
+            damping=servo_damping,
         ),
         "base_actuator_5": ImplicitActuatorCfg(
             joint_names_expr=["BASE_Revolute_5"],
             effort_limit=servo_effort_limit,
             velocity_limit=servo_velocity_limit,
             stiffness=0.0,
-            damping=10.0,
+            damping=servo_damping,
         ),
         "base_actuator_7": ImplicitActuatorCfg(
             joint_names_expr=["BASE_Revolute_7"],
             effort_limit=servo_effort_limit,
             velocity_limit=servo_velocity_limit,
             stiffness=0.0,
-            damping=10.0,
+            damping=servo_damping,
         ),
         "coxa_actuator_BL": ImplicitActuatorCfg(
             joint_names_expr=["Coxa_BL_Revolute_21"],
             effort_limit=servo_effort_limit,
             velocity_limit=servo_velocity_limit,
             stiffness=0.0,
-            damping=10.0,
+            damping=servo_damping,
         ),
         "coxa_actuator_FR": ImplicitActuatorCfg(
             joint_names_expr=["Coxa_FR_Revolute_4"],
             effort_limit=servo_effort_limit,
             velocity_limit=servo_velocity_limit,
             stiffness=0.0,
-            damping=10.0,
+            damping=servo_damping,
         ),
         "coxa_actuator_FL": ImplicitActuatorCfg(
             joint_names_expr=["Coxa_FL_Revolute_6"],
             effort_limit=servo_effort_limit,
             velocity_limit=servo_velocity_limit,
             stiffness=0.0,
-            damping=10.0,
+            damping=servo_damping,
         ),
         "coxa_actuator_BR": ImplicitActuatorCfg(
             joint_names_expr=["Coxa_BR_Revolute_8"],
             effort_limit=servo_effort_limit,
             velocity_limit=servo_velocity_limit,
             stiffness=0.0,
-            damping=10.0,
+            damping=servo_damping,
         ),
     },
 )
@@ -111,9 +112,9 @@ class Q1MiniEnvCfg(DirectRLEnvCfg):
     # Env parameters
     episode_length_s = 10.0
     decimation = 2
-    action_scale = 2
+    action_scale = 10
     action_space = 8            # 8 servo position references
-    observation_space = 16       # 8 previous references
+    observation_space = 20       # 16 previous joints positions + quaternion orientation
     state_space = 0
 
     # simulation
@@ -130,8 +131,10 @@ class Q1MiniEnvCfg(DirectRLEnvCfg):
                     "Coxa_FL_Revolute_6",
                     "Coxa_BR_Revolute_8"]
 
-    rew_scale_velocity = 1.0
+
     rew_scale_heading = 0.1
+    rew_scale_upright = 10.0
+    termination_height=0.2
 
     # Scene
     scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=2048, env_spacing=.50, replicate_physics=True)
@@ -162,7 +165,7 @@ class Q1MiniEnv(DirectRLEnv):
         self.basis_vec0 = self.heading_vec.clone()
         self.basis_vec1 = self.up_vec.clone()
         # Initialize progress_reward as a zero tensor
-        self.heading_proj = torch.zeros(self.num_envs, device=self.sim.device)
+        # self.heading_proj = torch.zeros(self.num_envs, device=self.sim.device)
 
     def initialize_dof_indices(self):
         # Attempt to find joint indices by names, ensure all are found
@@ -209,12 +212,13 @@ class Q1MiniEnv(DirectRLEnv):
 
     def _get_observations(self) -> dict:
         # Reshape prev_joint_positions to a 2D tensor where each row corresponds to an environment
-        observations = self.prev_joint_positions.view(self.num_envs, -1)
+        joint_pos_observations = self.prev_joint_positions.view(self.num_envs, -1)
 
-        heading_proj = self.heading_proj.view(self.num_envs, 1)
-        # print(heading_proj.size())
-        # Concatenate along the feature dimension
-        combined_observations = torch.cat((observations, heading_proj), dim=1)
+        # Get the quaternion representing the root orientation of the robot
+        root_quat = self.robot.data.root_quat_w.clone().view(self.num_envs, 4)
+
+        # Concatenate the joint positions and the quaternion along the second dimension (columns)
+        observations = torch.cat((joint_pos_observations, root_quat), dim=1)
 
         return {"policy": observations}
 
@@ -226,12 +230,17 @@ class Q1MiniEnv(DirectRLEnv):
 
         to_target = self.targets - self.robot.data.root_pos_w
         to_target[:, 2] = 0.0
-        _, _, self.heading_proj, _, _ = compute_heading_and_up(
+        _, self.up_proj, self.heading_proj, _, _ = compute_heading_and_up(
             self.robot.data.root_quat_w, quat_conjugate(self.start_rotation).repeat((self.num_envs, 1)), to_target, self.basis_vec0, self.basis_vec1, 2
         )
+        # print(self.robot.data.root_quat_w.shape)
         heading_weight_tensor = torch.ones_like(self.heading_proj) * self.cfg.rew_scale_heading
-        reward_heading = torch.where(self.heading_proj > 0.8, heading_weight_tensor, self.cfg.rew_scale_heading * self.heading_proj / 0.8)
-        return self.progress_reward + reward_heading
+        heading_reward = torch.where(self.heading_proj > 0.8, heading_weight_tensor, self.cfg.rew_scale_heading * self.heading_proj / 0.8)
+
+        # aligning up axis of robot and environment
+        up_reward = torch.zeros_like(heading_reward)
+        up_reward = torch.where(self.up_proj > 0.93, up_reward + self.cfg.rew_scale_upright, up_reward)
+        return self.progress_reward + heading_reward + up_reward
 
     def _get_dones(self) -> tuple[torch.Tensor, torch.Tensor]:
         # Check for joint limits
@@ -239,17 +248,13 @@ class Q1MiniEnv(DirectRLEnv):
         to_target[:, 2] = 0.0
         self.potentials = -torch.norm(to_target, p=2, dim=-1) / self.cfg.sim.dt
 
-        lower_limits = self.robot.data.soft_joint_pos_limits[0, :, 0]
-        upper_limits = self.robot.data.soft_joint_pos_limits[0, :, 1]
-        out_of_bounds_lower = self.robot.data.joint_pos*0.98 < lower_limits
-        out_of_bounds_upper = self.robot.data.joint_pos*0.98 > upper_limits
-        out_of_bounds = torch.any(torch.logical_or(out_of_bounds_lower, out_of_bounds_upper), dim=1)
+        died = self.robot.data.root_pos_w[:, 2] < self.cfg.termination_height
 
         # Check if the episode time has exceeded the specified length
         # This assumes that your simulation steps in the environment are counted in `_pre_physics_step` or tracked elsewhere
         time_out = self.episode_length_buf >= self.max_episode_length - 1
 
-        return out_of_bounds, time_out
+        return died, time_out
 
     def _reset_idx(self, env_ids: torch.Tensor):
         if env_ids is None or len(env_ids) == self.num_envs:
