@@ -13,6 +13,7 @@ from omni.isaac.lab.scene import InteractiveSceneCfg
 from omni.isaac.lab.sim import SimulationCfg
 from omni.isaac.lab.sim.spawners.from_files import GroundPlaneCfg, spawn_ground_plane
 from omni.isaac.lab.utils import configclass
+from omni.isaac.core.utils.torch.rotations import compute_heading_and_up, compute_rot, quat_conjugate
 from omni.isaac.lab.terrains import TerrainImporterCfg
 from omni.isaac.lab.utils.math import sample_uniform
 
@@ -118,7 +119,7 @@ Q1_CFG = ArticulationCfg(
 @configclass
 class Q1MiniEnvCfg(DirectRLEnvCfg):
     # Env parameters
-    episode_length_s = 5.0
+    episode_length_s = 10.0
     decimation = 2
     action_scale = 1
     action_space = 8            # 8 servo position references
@@ -157,6 +158,19 @@ class Q1MiniEnv(DirectRLEnv):
         self.initialize_dof_indices()
         self.action_scale = self.cfg.action_scale
         self.prev_action = torch.zeros((self.num_envs, self.cfg.action_space), device=self.sim.device)
+        self.up_vec = torch.tensor([0, 0, 1], dtype=torch.float32, device=self.sim.device).repeat((self.num_envs, 1))
+        self.heading_vec = torch.tensor([1, 0, 0], dtype=torch.float32, device=self.sim.device).repeat(
+            (self.num_envs, 1)
+        )
+        self.potentials = torch.zeros(self.num_envs, dtype=torch.float32, device=self.sim.device)
+        self.prev_potentials = torch.zeros_like(self.potentials)
+        self.targets = torch.tensor([1000, 0, 0], dtype=torch.float32, device=self.sim.device).repeat(
+            (self.num_envs, 1)
+        )
+        self.targets += self.scene.env_origins
+        self.start_rotation = torch.tensor([1, 0, 0, 0], device=self.sim.device, dtype=torch.float32)
+        self.basis_vec0 = self.heading_vec.clone()
+        self.basis_vec1 = self.up_vec.clone()
 
     def initialize_dof_indices(self):
         # Attempt to find joint indices by names, ensure all are found
@@ -191,6 +205,8 @@ class Q1MiniEnv(DirectRLEnv):
     def _pre_physics_step(self, actions: torch.Tensor) -> None:
         # Now 'self.robot' should be correctly initialized and available
         self.actions = self.cfg.action_scale * actions  # Scale actions appropriately
+        # Increment the step counter
+        # self.actions = actions.clone()
 
     def _apply_action(self):
         # Assuming self.actions is [2048, 8] and self._dof_idx is [8]
@@ -210,31 +226,58 @@ class Q1MiniEnv(DirectRLEnv):
         return {"policy": observations}
 
     def _get_rewards(self) -> torch.Tensor:
-        velocity = self.robot.data.root_velocity[:, 0]  # Assuming velocity along x-direction is desired
-        heading = self.robot.data.root_orientation[:, 2]  # Assuming z-axis for heading direction
+        # velocity = self.robot.data.root_lin_vel_w  # Assuming velocity along x-direction is desired
 
         # Simple reward function that rewards forward movement and correct heading
-        reward_velocity = self.cfg.rew_scale_velocity * velocity
-        reward_heading = self.cfg.rew_scale_heading * torch.cos(heading)  # cos(heading) aligns with the forward direction
-        return reward_velocity + reward_heading
+        progress_reward = self.potentials - self.prev_potentials
+
+        # to_target = self.targets - self.robot.data.root_pos_w
+        # to_target[:, 2] = 0.0
+        # _, _, heading_proj, _, _ = compute_heading_and_up(
+        #     self.robot.data.root_quat_w, quat_conjugate(self.start_rotation).repeat((self.num_envs, 1)), to_target, self.basis_vec0, self.basis_vec1, 2
+        # )
+        # heading_weight_tensor = torch.ones_like(heading_proj) * self.cfg.rew_scale_heading
+        # reward_heading = torch.where(heading_proj > 0.8, heading_weight_tensor, self.cfg.rew_scale_heading * heading_proj / 0.8)
+        return progress_reward
+        #+ reward_heading
 
     def _get_dones(self) -> tuple[torch.Tensor, torch.Tensor]:
-        # Retrieve the soft joint position limits from the robot data
+        # Check for joint limits
+        to_target = self.targets - self.robot.data.root_pos_w
+        to_target[:, 2] = 0.0
+        self.potentials = -torch.norm(to_target, p=2, dim=-1) / self.cfg.sim.dt
+
         lower_limits = self.robot.data.soft_joint_pos_limits[0, :, 0]
         upper_limits = self.robot.data.soft_joint_pos_limits[0, :, 1]
-
-        # Print the limits for debugging or information
-        # print("DOF Lower Limits:", lower_limits)
-        # print("DOF Upper Limits:", upper_limits)
-        # Check if any joint position is out of bounds
-        out_of_bounds_lower = self.robot.data.joint_pos < lower_limits
-        out_of_bounds_upper = self.robot.data.joint_pos > upper_limits
+        out_of_bounds_lower = self.robot.data.joint_pos*0.98 < lower_limits
+        out_of_bounds_upper = self.robot.data.joint_pos*0.98 > upper_limits
         out_of_bounds = torch.any(torch.logical_or(out_of_bounds_lower, out_of_bounds_upper), dim=1)
 
-        return out_of_bounds, self.episode_length_buf >= self.max_episode_length - 1
+        # Check if the episode time has exceeded the specified length
+        # This assumes that your simulation steps in the environment are counted in `_pre_physics_step` or tracked elsewhere
+        time_out = self.episode_length_buf >= self.max_episode_length - 1
+
+        return out_of_bounds, time_out
 
     def _reset_idx(self, env_ids: torch.Tensor):
+        if env_ids is None or len(env_ids) == self.num_envs:
+            env_ids = self.robot._ALL_INDICES
         super()._reset_idx(env_ids)
         self.prev_action[env_ids] = torch.zeros_like(self.prev_action[env_ids])
+
+        joint_pos = self.robot.data.default_joint_pos[env_ids]
+        joint_vel = self.robot.data.default_joint_vel[env_ids]
+        default_root_state = self.robot.data.default_root_state[env_ids]
+        default_root_state[:, :3] += self.scene.env_origins[env_ids]
+
+        self.robot.write_root_pose_to_sim(default_root_state[:, :7], env_ids)
+        self.robot.write_root_velocity_to_sim(default_root_state[:, 7:], env_ids)
+        self.robot.write_joint_state_to_sim(joint_pos, joint_vel, None, env_ids)
+
+        to_target = self.targets[env_ids] - default_root_state[:, :3]
+        to_target[:, 2] = 0.0
+        self.potentials[env_ids] = -torch.norm(to_target, p=2, dim=-1) / self.cfg.sim.dt
+        self.prev_potentials[:] = self.potentials
+
 
 
