@@ -1,0 +1,222 @@
+<?xml version='1.0' encoding='utf-8'?>
+<robot name="Q1_Assembly">
+    <link name="BASE">
+        <inertial>
+            <origin xyz="-8.142039538314067e-06 0.005027753135309843 -0.0012258414928178138" rpy="0.0 0.0 0.0" />
+            <mass value="0.27483386601342913" />
+            <inertia ixx="0.00019667744361528635" iyy="0.00015923006178420186" izz="0.0003205202039226309" ixy="-2.8545823430699905e-08" iyz="2.25087085369254e-06" ixz="-2.749114205790904e-08" />
+        </inertial>
+        <visual name="BASE_visual">
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+            <geometry>
+                <mesh filename="meshes/BASE.stl" scale="0.001 0.001 0.001" />
+            </geometry>
+        </visual>
+        <collision name="BASE_collision">
+            <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0" />
+            <geometry>
+                <mesh filename="meshes/BASE.stl" scale="0.001 0.001 0.001" />
+            </geometry>
+        </collision>
+    </link>
+    <link name="Coxa_BR">
+        <inertial>
+            <origin xyz="0.02050000073221039 0.0002393924791529889 -0.01693939179571231" rpy="0.0 -0.0 0.0" />
+            <mass value="0.047892817105117814" />
+            <inertia ixx="1.1764660182482904e-05" iyy="1.0604749155641109e-05" izz="1.0604749159656208e-05" ixy="-8.996533003376888e-08" iyz="-2.7712823225421935e-08" ixz="-8.99653297365789e-08" />
+        </inertial>
+        <visual name="Coxa_BR_visual">
+            <origin xyz="4.768371919539049e-10 5.364417798858767e-10 0.0017999999999999882" rpy="1.5707963267948966 4.926093753779693e-32 3.141592653589793" />
+            <geometry>
+                <mesh filename="meshes/Coxa_BR.stl" scale="0.001 0.001 0.001" />
+            </geometry>
+        </visual>
+        <collision name="Coxa_BR_collision">
+            <origin xyz="4.768371919539049e-10 5.364417798858767e-10 0.0017999999999999882" rpy="1.5707963267948966 4.926093753779693e-32 3.141592653589793" />
+            <geometry>
+                <mesh filename="meshes/Coxa_BR.stl" scale="0.001 0.001 0.001" />
+            </geometry>
+        </collision>
+    </link>
+    <link name="Tibia_BR">
+        <inertial>
+            <origin xyz="0.0018752835833395576 0.020144934951877448 -0.015633182600098446" rpy="0.0 -0.0 0.0" />
+            <mass value="0.04581820933556819" />
+            <inertia ixx="1.649246618664236e-05" iyy="1.5863336139806223e-05" izz="2.3773630277891663e-06" ixy="9.170628425002108e-08" iyz="-5.016123823149885e-07" ixz="6.348479894365444e-08" />
+        </inertial>
+        <visual name="Tibia_BR_visual">
+            <origin xyz="-9.999865520774699e-05 0.029850000683366226 -0.0052499998530756795" rpy="1.5707963267948966 5.551115123125775e-17 3.141592653589793" />
+            <geometry>
+                <mesh filename="meshes/Tibia_BR.stl" scale="0.001 0.001 0.001" />
+            </geometry>
+        </visual>
+        <collision name="Tibia_BR_collision">
+            <origin xyz="-9.999865520774699e-05 0.029850000683366226 -0.0052499998530756795" rpy="1.5707963267948966 5.551115123125775e-17 3.141592653589793" />
+            <geometry>
+                <mesh filename="meshes/Tibia_BR.stl" scale="0.001 0.001 0.001" />
+            </geometry>
+        </collision>
+    </link>
+    <link name="Coxa_BL">
+        <inertial>
+            <origin xyz="-0.02033894158090716 0.0025758098731509583 -0.016939391795711557" rpy="0.0 -0.0 0.0" />
+            <mass value="0.04789281710523348" />
+            <inertia ixx="1.1769960141223606e-05" iyy="1.059944919696402e-05" izz="1.0604749159717736e-05" ixy="-4.379715174816117e-08" iyz="-3.7792349891890086e-08" ixz="8.62177442029365e-08" />
+        </inertial>
+        <visual name="Coxa_BL_visual">
+            <origin xyz="-4.768372008356891e-10 5.364417887676609e-10 0.0017999999999999971" rpy="1.5707963267948966 6.083281527479571e-17 -0.11429646531300272" />
+            <geometry>
+                <mesh filename="meshes/Coxa_BL.stl" scale="0.001 0.001 0.001" />
+            </geometry>
+        </visual>
+        <collision name="Coxa_BL_collision">
+            <origin xyz="-4.768372008356891e-10 5.364417887676609e-10 0.0017999999999999971" rpy="1.5707963267948966 6.083281527479571e-17 -0.11429646531300272" />
+            <geometry>
+                <mesh filename="meshes/Coxa_BL.stl" scale="0.001 0.001 0.001" />
+            </geometry>
+        </collision>
+    </link>
+    <link name="Tibia_BL">
+        <inertial>
+            <origin xyz="0.00043435183495639686 -0.02022665584739664 0.015633182965208096" rpy="0.0 -0.0 0" />
+            <mass value="0.04581820334543465" />
+            <inertia ixx="1.6463546440736072e-05" iyy="1.5892320764739737e-05" izz="2.3774279507951016e-06" ixy="1.6069452787727893e-07" iyz="-4.918270163633177e-07" ixz="1.203619487287119e-07" />
+        </inertial>
+        <visual name="Tibia_BL_visual">
+            <origin xyz="0.003503668474676722 -0.029643834428722805 0.005249999853075686" rpy="-1.5707963267948966 -6.184207437060503e-17 0.1142964653130028" />
+            <geometry>
+                <mesh filename="meshes/Tibia_BL.stl" scale="0.001 0.001 0.001" />
+            </geometry>
+        </visual>
+        <collision name="Tibia_BL_collision">
+            <origin xyz="0.003503668474676722 -0.029643834428722805 0.005249999853075686" rpy="-1.5707963267948966 -6.184207437060503e-17 0.1142964653130028" />
+            <geometry>
+                <mesh filename="meshes/Tibia_BL.stl" scale="0.001 0.001 0.001" />
+            </geometry>
+        </collision>
+    </link>
+    <link name="Coxa_FR">
+        <inertial>
+            <origin xyz="0.0205000007322443 -0.00023939158503928583 -0.016939391795711564" rpy="0.0 -0.0 0.0" />
+            <mass value="0.04789281710523348" />
+            <inertia ixx="1.17646601825226e-05" iyy="1.0604749155665043e-05" izz="1.0604749159717736e-05" ixy="8.996533000411595e-08" iyz="2.7712823224776496e-08" ixz="-8.996532973710406e-08" />
+        </inertial>
+        <visual name="Coxa_FR_visual">
+            <origin xyz="4.768371875130129e-10 3.576278917449827e-10 0.0017999999999999882" rpy="1.5707963267948966 4.926093753779693e-32 3.141592653589793" />
+            <geometry>
+                <mesh filename="meshes/Coxa_FR.stl" scale="0.001 0.001 0.001" />
+            </geometry>
+        </visual>
+        <collision name="Coxa_FR_collision">
+            <origin xyz="4.768371875130129e-10 3.576278917449827e-10 0.0017999999999999882" rpy="1.5707963267948966 4.926093753779693e-32 3.141592653589793" />
+            <geometry>
+                <mesh filename="meshes/Coxa_FR.stl" scale="0.001 0.001 0.001" />
+            </geometry>
+        </collision>
+    </link>
+    <link name="Tibia_FR">
+        <inertial>
+            <origin xyz="0.0018752832730033386 0.02014493314118619 0.01563318296537" rpy="0.0 -0.0 0.0" />
+            <mass value="0.04581820334568161" />
+            <inertia ixx="1.6492465856071686e-05" iyy="1.5863336086785213e-05" izz="2.3773626877260107e-06" ixy="9.170638508137878e-08" iyz="5.016122672263485e-07" ixz="-6.348484355831295e-08" />
+        </inertial>
+        <visual name="Tibia_FR_visual">
+            <origin xyz="-9.999865520770257e-05 0.02984999978929659 0.005249999853075683" rpy="-1.5707963267948966 -5.551115123125775e-17 -3.141592653589793" />
+            <geometry>
+                <mesh filename="meshes/Tibia_FR.stl" scale="0.001 0.001 0.001" />
+            </geometry>
+        </visual>
+        <collision name="Tibia_FR_collision">
+            <origin xyz="-9.999865520770257e-05 0.02984999978929659 0.005249999853075683" rpy="-1.5707963267948966 -5.551115123125775e-17 -3.141592653589793" />
+            <geometry>
+                <mesh filename="meshes/Tibia_FR.stl" scale="0.001 0.001 0.001" />
+            </geometry>
+        </collision>
+    </link>
+    <link name="Coxa_FL">
+        <inertial>
+            <origin xyz="-0.020500000732210363 -0.0002393915850833306 -0.01693939179571231" rpy="0.0 -0.0 0.0" />
+            <mass value="0.047892817105117814" />
+            <inertia ixx="1.1764660182482898e-05" iyy="1.0604749155641163e-05" izz="1.0604749159656343e-05" ixy="-8.996533003374177e-08" iyz="2.771282322542024e-08" ixz="8.996532973658568e-08" />
+        </inertial>
+        <visual name="Coxa_FL_visual">
+            <origin xyz="-4.768371875130129e-10 3.576278873040906e-10 0.0017999999999999882" rpy="1.5707963267948966 4.9260937537796953e-32 0.0" />
+            <geometry>
+                <mesh filename="meshes/Coxa_FL.stl" scale="0.001 0.001 0.001" />
+            </geometry>
+        </visual>
+        <collision name="Coxa_FL_collision">
+            <origin xyz="-4.768371875130129e-10 3.576278873040906e-10 0.0017999999999999882" rpy="1.5707963267948966 4.9260937537796953e-32 0.0" />
+            <geometry>
+                <mesh filename="meshes/Coxa_FL.stl" scale="0.001 0.001 0.001" />
+            </geometry>
+        </collision>
+    </link>
+    <link name="Tibia_FL">
+        <inertial>
+            <origin xyz="-0.0018752835833680949 -0.02014421797756295 -0.015633182600260368" rpy="0.0 -0.0 0.0" />
+            <mass value="0.04581820933581591" />
+            <inertia ixx="1.6492531449988316e-05" iyy="1.586333614003385e-05" izz="2.377428290911926e-06" ixy="9.179220457102282e-08" iyz="5.023451035155204e-07" ixz="-6.348479898890633e-08" />
+        </inertial>
+        <visual name="Tibia_FL_visual">
+            <origin xyz="9.999865520771145e-05 -0.0298499997892966 -0.005249999853075693" rpy="1.5707963267948966 2.7755575615628883e-17 -1.6491588421666554e-16" />
+            <geometry>
+                <mesh filename="meshes/Tibia_FL.stl" scale="0.001 0.001 0.001" />
+            </geometry>
+        </visual>
+        <collision name="Tibia_FL_collision">
+            <origin xyz="9.999865520771145e-05 -0.0298499997892966 -0.005249999853075693" rpy="1.5707963267948966 2.7755575615628883e-17 -1.6491588421666554e-16" />
+            <geometry>
+                <mesh filename="meshes/Tibia_FL.stl" scale="0.001 0.001 0.001" />
+            </geometry>
+        </collision>
+    </link>
+    <joint name="BASE_Revolute-1" type="continuous">
+        <origin xyz="-0.0305 -0.02665 0.02415" rpy="0.0 -0.0 0.0" />
+        <parent link="BASE" />
+        <child link="Coxa_BL" />
+        <axis xyz="0.0 0.0 1.0" />
+    </joint>
+    <joint name="BASE_Revolute-3" type="continuous">
+        <origin xyz="0.0305 0.02665 0.02415" rpy="0.0 -0.0 0.0" />
+        <parent link="BASE" />
+        <child link="Coxa_FR" />
+        <axis xyz="0.0 0.0 1.0" />
+    </joint>
+    <joint name="Coxa_FR_Revolute-4" type="continuous">
+        <origin xyz="0.04100000000000001 0.0167 -0.0167" rpy="3.141592653589793 4.3674786495750664e-63 0.0" />
+        <parent link="Coxa_FR" />
+        <child link="Tibia_FR" />
+        <axis xyz="0.0 1.0 0.0" />
+    </joint>
+    <joint name="BASE_Revolute-5" type="continuous">
+        <origin xyz="-0.0305 0.02665 0.02415" rpy="0.0 -0.0 0.0" />
+        <parent link="BASE" />
+        <child link="Coxa_FL" />
+        <axis xyz="0.0 0.0 1.0" />
+    </joint>
+    <joint name="Coxa_FL_Revolute-6" type="continuous">
+        <origin xyz="-0.04100000000000001 0.0167 -0.0167" rpy="0.0 -0.0 5.473822126268817e-48" />
+        <parent link="Coxa_FL" />
+        <child link="Tibia_FL" />
+        <axis xyz="-5.473822126268817e-48 -1.0 -1.0947644252537633e-47" />
+    </joint>
+    <joint name="BASE_Revolute-7" type="continuous">
+        <origin xyz="0.0305 -0.02665 0.02415" rpy="0.0 -0.0 0.0" />
+        <parent link="BASE" />
+        <child link="Coxa_BR" />
+        <axis xyz="0.0 0.0 1.0" />
+    </joint>
+    <joint name="Coxa_BR_Revolute-8" type="continuous">
+        <origin xyz="0.04100000000000001 -0.0167 -0.0167" rpy="0.0 -4.3674786495750664e-63 0.0" />
+        <parent link="Coxa_BR" />
+        <child link="Tibia_BR" />
+        <axis xyz="0.0 1.0 0.0" />
+    </joint>
+    <joint name="Coxa_BL_Revolute-21" type="continuous">
+        <origin xyz="-0.04263708 -0.011915079999999998 -0.0167" rpy="3.141592653589793 4.248206103071622e-34 -1.2325951644078312e-32" />
+        <parent link="Coxa_BL" />
+        <child link="Tibia_BL" />
+        <axis xyz="0.11404799999999998 -0.993475 -5.51489409694743e-17" />
+    </joint>
+</robot>
