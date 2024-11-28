@@ -22,9 +22,10 @@ from omni.isaac.lab.utils.math import sample_uniform
 from omni.isaac.lab.actuators import ImplicitActuatorCfg
 
 
-servo_effort_limit = 5.0
-servo_velocity_limit = 100.0
-servo_damping = 50.0
+servo_effort_limit = 1.0
+servo_velocity_limit = 0.001
+servo_damping = 1.0
+servo_stiffness = 10.0
 Q1_CFG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
         usd_path="C:/Users/Suranjan/AppData/Local/ov/pkg/isaac-lab/IsaacLab/Q1_Mini/Q1_Assembly/Q1_Mini_Test.usd",
@@ -50,56 +51,56 @@ Q1_CFG = ArticulationCfg(
             joint_names_expr=["BASE_Revolute_1"],
             effort_limit=servo_effort_limit,
             velocity_limit=servo_velocity_limit,
-            stiffness=0.0,
+            stiffness=servo_stiffness,
             damping=servo_damping,
         ),
         "base_actuator_3": ImplicitActuatorCfg(
             joint_names_expr=["BASE_Revolute_3"],
             effort_limit=servo_effort_limit,
             velocity_limit=servo_velocity_limit,
-            stiffness=0.0,
+            stiffness=servo_stiffness,
             damping=servo_damping,
         ),
         "base_actuator_5": ImplicitActuatorCfg(
             joint_names_expr=["BASE_Revolute_5"],
             effort_limit=servo_effort_limit,
             velocity_limit=servo_velocity_limit,
-            stiffness=0.0,
+            stiffness=servo_stiffness,
             damping=servo_damping,
         ),
         "base_actuator_7": ImplicitActuatorCfg(
             joint_names_expr=["BASE_Revolute_7"],
             effort_limit=servo_effort_limit,
             velocity_limit=servo_velocity_limit,
-            stiffness=0.0,
+            stiffness=servo_stiffness,
             damping=servo_damping,
         ),
         "coxa_actuator_BL": ImplicitActuatorCfg(
             joint_names_expr=["Coxa_BL_Revolute_21"],
             effort_limit=servo_effort_limit,
             velocity_limit=servo_velocity_limit,
-            stiffness=0.0,
+            stiffness=servo_stiffness,
             damping=servo_damping,
         ),
         "coxa_actuator_FR": ImplicitActuatorCfg(
             joint_names_expr=["Coxa_FR_Revolute_4"],
             effort_limit=servo_effort_limit,
             velocity_limit=servo_velocity_limit,
-            stiffness=0.0,
+            stiffness=servo_stiffness,
             damping=servo_damping,
         ),
         "coxa_actuator_FL": ImplicitActuatorCfg(
             joint_names_expr=["Coxa_FL_Revolute_6"],
             effort_limit=servo_effort_limit,
             velocity_limit=servo_velocity_limit,
-            stiffness=0.0,
+            stiffness=servo_stiffness,
             damping=servo_damping,
         ),
         "coxa_actuator_BR": ImplicitActuatorCfg(
             joint_names_expr=["Coxa_BR_Revolute_8"],
             effort_limit=servo_effort_limit,
             velocity_limit=servo_velocity_limit,
-            stiffness=0.0,
+            stiffness=servo_stiffness,
             damping=servo_damping,
         ),
     },
@@ -112,7 +113,7 @@ class Q1MiniEnvCfg(DirectRLEnvCfg):
     # Env parameters
     episode_length_s = 10.0
     decimation = 2
-    action_scale = 10
+    action_scale = 1
     action_space = 8            # 8 servo position references
     observation_space = 20       # 16 previous joints positions + quaternion orientation
     state_space = 0
@@ -134,7 +135,7 @@ class Q1MiniEnvCfg(DirectRLEnvCfg):
 
     rew_scale_heading = 0.1
     rew_scale_upright = 10.0
-    termination_height=0.2
+    termination_height=0.035
 
     # Scene
     scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=2048, env_spacing=.50, replicate_physics=True)
@@ -208,7 +209,8 @@ class Q1MiniEnv(DirectRLEnv):
         # Example: If the method expects a specific shaping of the tensor:
         actions_to_apply = self.actions.unsqueeze(2)  # This would adjust shape to [2048, 8, 1]
         # Then use this reshaped actions to apply:
-        self.robot.set_joint_effort_target(actions_to_apply, joint_ids=self._dof_idx)
+        self.robot.set_joint_position_target(actions_to_apply, joint_ids=self._dof_idx)
+
 
     def _get_observations(self) -> dict:
         # Reshape prev_joint_positions to a 2D tensor where each row corresponds to an environment
