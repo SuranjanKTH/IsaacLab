@@ -17,7 +17,7 @@ from omni.isaac.lab_tasks.direct.locomotion.locomotion_env import LocomotionEnv
 
 from omni.isaac.lab.actuators import ImplicitActuatorCfg
 
-gear = 1.0
+gear = 1.5
 Q1_effort_limit = 0.0       #Doesn't seem to have any effect
 Q1_velocity_limit = 0.0     #Doesn't seem to have any effect
 Q1_damping = 5.0*gear            #kg/s
@@ -98,12 +98,12 @@ class Q1MiniEnvCfg(DirectRLEnvCfg):
 
     # Reward parameters
     heading_weight: float = 0.5
-    up_weight: float = 0.1
+    up_weight: float = 0.001
 
-    energy_cost_scale: float = 0.005
+    energy_cost_scale: float = 0.0
     actions_cost_scale: float = 0.005
     alive_reward_scale: float = 0.5
-    dof_vel_scale: float = 0.2
+    dof_vel_scale: float = 0.01
 
     death_cost: float = -2.0
     termination_height: float = 0.028
