@@ -134,8 +134,9 @@ class Q1MiniEnvCfg(DirectRLEnvCfg):
 
 
     rew_scale_heading = 0.1
-    rew_scale_upright = 10.0
-    termination_height=0.035
+    rew_scale_upright = 0.10
+    pen_scale_symmetry = 0.001
+    termination_height=0.032
 
     # Scene
     scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=2048, env_spacing=.50, replicate_physics=True)
@@ -165,6 +166,8 @@ class Q1MiniEnv(DirectRLEnv):
         self.start_rotation = torch.tensor([1, 0, 0, 0], device=self.sim.device, dtype=torch.float32)
         self.basis_vec0 = self.heading_vec.clone()
         self.basis_vec1 = self.up_vec.clone()
+        self.accum_joint_movement = torch.zeros((self.num_envs, 8), dtype=torch.float32, device=self.sim.device)
+
         # Initialize progress_reward as a zero tensor
         # self.heading_proj = torch.zeros(self.num_envs, device=self.sim.device)
 
@@ -185,6 +188,9 @@ class Q1MiniEnv(DirectRLEnv):
         # Convert list of indices to a tensor
         self._dof_idx = torch.tensor(joint_indices, dtype=torch.long, device=self.robot.device)
 
+
+
+
     def _setup_scene(self):
         self.robot = Articulation(self.cfg.robot_cfg)
         # add ground plane
@@ -204,12 +210,17 @@ class Q1MiniEnv(DirectRLEnv):
         self.prev_joint_positions[:, :, 0] = self.prev_joint_positions[:, :, 1]  # Move the last positions back
         self.prev_joint_positions[:, :, 1] = self.robot.data.joint_pos  # Store current joint positions
 
+        # Calculate movement
+        joint_movements = torch.abs(self.prev_joint_positions[:, :, 1] - self.prev_joint_positions[:, :, 0])
+        self.accum_joint_movement += joint_movements
+
     def _apply_action(self):
 
         # Example: If the method expects a specific shaping of the tensor:
         actions_to_apply = self.actions.unsqueeze(2)  # This would adjust shape to [2048, 8, 1]
         # Then use this reshaped actions to apply:
         self.robot.set_joint_position_target(actions_to_apply, joint_ids=self._dof_idx)
+
 
 
     def _get_observations(self) -> dict:
@@ -242,7 +253,25 @@ class Q1MiniEnv(DirectRLEnv):
         # aligning up axis of robot and environment
         up_reward = torch.zeros_like(heading_reward)
         up_reward = torch.where(self.up_proj > 0.93, up_reward + self.cfg.rew_scale_upright, up_reward)
-        return self.progress_reward + heading_reward + up_reward
+
+        ## Calculate the variance penalty at the end of an episode
+        # Groups of joints to compare
+        # coxa_indices = torch.tensor([1, 3, 5, 7])  # Assuming these are indices for coxa joints
+        # base_indices = torch.tensor([0, 2, 4, 6])  # Assuming these are indices for base joints
+        coxa_indices = torch.tensor([4, 5, 6, 7])  # Assuming these are indices for coxa joints
+        base_indices = torch.tensor([0, 1, 2, 3])  # Assuming these are indices for base joints
+        # Calculate variances among groups
+        std_coxa = torch.std(self.accum_joint_movement[coxa_indices])
+        std_base = torch.std(self.accum_joint_movement[base_indices])
+        # Combine variances into a single penalty score
+        std_penalty = (std_coxa + std_base)* self.cfg.pen_scale_symmetry
+
+
+        return (self.progress_reward
+                + heading_reward
+                + up_reward
+                - std_penalty
+        )
 
     def _get_dones(self) -> tuple[torch.Tensor, torch.Tensor]:
         # Check for joint limits
