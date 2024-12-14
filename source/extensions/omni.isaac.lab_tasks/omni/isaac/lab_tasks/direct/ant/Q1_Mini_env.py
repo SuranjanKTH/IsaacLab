@@ -203,7 +203,8 @@ class Q1MiniEnv(DirectRLEnv):
         # add lights
         light_cfg = sim_utils.DomeLightCfg(intensity=2000.0, color=(0.75, 0.75, 0.75))
         light_cfg.func("/World/Light", light_cfg)
-
+        # viewer settings
+        self.sim.set_camera_view([.5, .5, .5], [0.0, 0.0, 0.0])
     def _pre_physics_step(self, actions: torch.Tensor) -> None:
         # Now 'self.robot' should be correctly initialized and available
         self.actions = self.cfg.action_scale * actions  # Scale actions appropriately

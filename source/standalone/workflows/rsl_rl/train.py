@@ -150,4 +150,7 @@ if __name__ == "__main__":
     # run the main function
     main()
     # close sim app
+    simulation_app.update()
+    simulation_app.update()
+    simulation_app.update()
     simulation_app.close()
