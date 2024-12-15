@@ -119,7 +119,9 @@ class Q1MiniEnvCfg(DirectRLEnvCfg):
     state_space = 0
 
     # simulation
-    sim: SimulationCfg = SimulationCfg(dt=1 / 120, render_interval=decimation)
+    sim: SimulationCfg = SimulationCfg(dt=1 / 60
+                                       , render_interval=decimation
+    )
 
     # Robot
     robot_cfg: ArticulationCfg = Q1_CFG.replace(prim_path="/World/envs/env_.*/Robot")
@@ -133,7 +135,7 @@ class Q1MiniEnvCfg(DirectRLEnvCfg):
                     "Coxa_BR_Revolute_8"]
 
 
-    rew_scale_heading = 0.1
+    rew_scale_heading = 0.2
     rew_scale_upright = 0.10
     pen_scale_symmetry = 0.001
     termination_height=0.032
@@ -271,7 +273,8 @@ class Q1MiniEnv(DirectRLEnv):
         return (self.progress_reward
                 + heading_reward
                 + up_reward
-                - std_penalty
+                # - energy_cost_scale * electricity_cost
+                # - std_penalty
         )
 
     def _get_dones(self) -> tuple[torch.Tensor, torch.Tensor]:
