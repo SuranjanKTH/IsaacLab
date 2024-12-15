@@ -137,6 +137,7 @@ class Q1MiniEnvCfg(DirectRLEnvCfg):
 
     rew_scale_heading = 0.2
     rew_scale_upright = 0.10
+    rew_scale_energy = 0.05
     pen_scale_symmetry = 0.001
     termination_height=0.032
 
@@ -192,7 +193,6 @@ class Q1MiniEnv(DirectRLEnv):
 
 
 
-
     def _setup_scene(self):
         self.robot = Articulation(self.cfg.robot_cfg)
         # add ground plane
@@ -213,6 +213,8 @@ class Q1MiniEnv(DirectRLEnv):
         self.prev_joint_positions[:, :, 0] = self.prev_joint_positions[:, :, 1]  # Move the last positions back
         self.prev_joint_positions[:, :, 1] = self.robot.data.joint_pos  # Store current joint positions
 
+
+
         # Calculate movement
         joint_movements = torch.abs(self.prev_joint_positions[:, :, 1] - self.prev_joint_positions[:, :, 0])
         self.accum_joint_movement += joint_movements
@@ -223,6 +225,8 @@ class Q1MiniEnv(DirectRLEnv):
         actions_to_apply = self.actions.unsqueeze(2)  # This would adjust shape to [2048, 8, 1]
         # Then use this reshaped actions to apply:
         self.robot.set_joint_position_target(actions_to_apply, joint_ids=self._dof_idx)
+
+        self.motor_effort = self.robot._data.applied_torque
 
 
 
@@ -270,10 +274,19 @@ class Q1MiniEnv(DirectRLEnv):
         std_penalty = (std_coxa + std_base)* self.cfg.pen_scale_symmetry
 
 
+
+        electricity_cost = torch.sum(
+            torch.abs(self.motor_effort *(self.actions - self.prev_joint_positions[:, :, 0]) ),
+            dim = -1,
+        )
+
+        energy_penalty = self.cfg.rew_scale_energy * electricity_cost
+
+
         return (self.progress_reward
                 + heading_reward
                 + up_reward
-                # - energy_cost_scale * electricity_cost
+                - energy_penalty
                 # - std_penalty
         )
 
