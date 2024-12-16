@@ -216,7 +216,6 @@ class Q1MiniEnv(DirectRLEnv):
         self.prev_joint_positions[:, :, 1] = self.actions  # Store previous joint actions
         self.action_errors = torch.abs(self.actions - self.robot.data.joint_pos) #Compare previous action reference and current position
         self.actions = self.cfg.action_scale * actions  # Scale actions appropriately
-        print(actions)
 
         # Calculate movement
         joint_movements = torch.abs(self.prev_joint_positions[:, :, 1] - self.prev_joint_positions[:, :, 0])
