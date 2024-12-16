@@ -139,7 +139,7 @@ class Q1MiniEnvCfg(DirectRLEnvCfg):
     rew_scale_upright = 0.10
     rew_scale_energy = 0.001
     pen_scale_symmetry = 0.0001
-    pen_scale_unrealistic = 0.001
+    pen_scale_unrealistic = 0.0001
     termination_height=0.032
 
     # Scene
@@ -208,13 +208,16 @@ class Q1MiniEnv(DirectRLEnv):
         light_cfg.func("/World/Light", light_cfg)
         # viewer settings
         self.sim.set_camera_view([.5, .5, .5], [0.0, 0.0, 0.0])
+
     def _pre_physics_step(self, actions: torch.Tensor) -> None:
         # Now 'self.robot' should be correctly initialized and available
         # Calculate error between last commanded positions and current actual positions
+        self.prev_joint_positions[:, :, 0] = self.prev_joint_positions[:, :, 1]  # Move the last positions back
+        self.prev_joint_positions[:, :, 1] = self.actions  # Store previous joint actions
         self.action_errors = torch.abs(self.actions - self.robot.data.joint_pos) #Compare previous action reference and current position
         self.actions = self.cfg.action_scale * actions  # Scale actions appropriately
-        self.prev_joint_positions[:, :, 0] = self.prev_joint_positions[:, :, 1]  # Move the last positions back
-        self.prev_joint_positions[:, :, 1] = self.robot.data.joint_pos  # Store current joint positions
+
+
 
 
 
@@ -295,7 +298,7 @@ class Q1MiniEnv(DirectRLEnv):
                 + up_reward
                 - energy_penalty
                 # - std_penalty
-                - unrealistic_ref_penalty       #Penalizes actor for having unrealistic servo position references
+                # - unrealistic_ref_penalty       #Penalizes actor for having unrealistic servo position references
         )
 
     def _get_dones(self) -> tuple[torch.Tensor, torch.Tensor]:
