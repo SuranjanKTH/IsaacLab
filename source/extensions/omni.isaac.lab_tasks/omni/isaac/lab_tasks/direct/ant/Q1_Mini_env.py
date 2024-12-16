@@ -270,7 +270,7 @@ class Q1MiniEnv(DirectRLEnv):
         up_reward = torch.where(self.up_proj > 0.93, up_reward + self.cfg.rew_scale_upright, up_reward)
 
         ## Calculate the variance penalty at the end of an episode
-        # Groups of joints to compare
+            # Groups of joints to compare
         # coxa_indices = torch.tensor([1, 3, 5, 7])  # Assuming these are indices for coxa joints
         # base_indices = torch.tensor([0, 2, 4, 6])  # Assuming these are indices for base joints
         coxa_indices = torch.tensor([4, 5, 6, 7])  # Assuming these are indices for coxa joints
