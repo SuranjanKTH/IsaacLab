@@ -28,7 +28,7 @@ servo_damping = 1.0
 servo_stiffness = 10.0
 Q1_CFG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
-        usd_path="C:/Users/Suranjan/AppData/Local/ov/pkg/isaac-lab/IsaacLab/Q1_Mini/Q1_Assembly/Q1_Mini_Test.usd",
+        usd_path="C:/Users/Suranjan/PycharmProjects/IsaacLab/Q1_Mini/Q1_Assembly/Q1_Mini_Test.usd",
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             disable_gravity=False,
             max_depenetration_velocity=10.0,
@@ -135,10 +135,11 @@ class Q1MiniEnvCfg(DirectRLEnvCfg):
                     "Coxa_BR_Revolute_8"]
 
 
-    rew_scale_heading = 0.2
+    rew_scale_heading = 0.5
     rew_scale_upright = 0.10
-    rew_scale_energy = 0.05
-    pen_scale_symmetry = 0.001
+    rew_scale_energy = 0.001
+    pen_scale_symmetry = 0.0001
+    pen_scale_unrealistic = 0.001
     termination_height=0.032
 
     # Scene
@@ -209,6 +210,8 @@ class Q1MiniEnv(DirectRLEnv):
         self.sim.set_camera_view([.5, .5, .5], [0.0, 0.0, 0.0])
     def _pre_physics_step(self, actions: torch.Tensor) -> None:
         # Now 'self.robot' should be correctly initialized and available
+        # Calculate error between last commanded positions and current actual positions
+        self.action_errors = torch.abs(self.actions - self.robot.data.joint_pos) #Compare previous action reference and current position
         self.actions = self.cfg.action_scale * actions  # Scale actions appropriately
         self.prev_joint_positions[:, :, 0] = self.prev_joint_positions[:, :, 1]  # Move the last positions back
         self.prev_joint_positions[:, :, 1] = self.robot.data.joint_pos  # Store current joint positions
@@ -223,6 +226,7 @@ class Q1MiniEnv(DirectRLEnv):
 
         # Example: If the method expects a specific shaping of the tensor:
         actions_to_apply = self.actions.unsqueeze(2)  # This would adjust shape to [2048, 8, 1]
+
         # Then use this reshaped actions to apply:
         self.robot.set_joint_position_target(actions_to_apply, joint_ids=self._dof_idx)
 
@@ -236,6 +240,7 @@ class Q1MiniEnv(DirectRLEnv):
 
         # Get the quaternion representing the root orientation of the robot
         root_quat = self.robot.data.root_quat_w.clone().view(self.num_envs, 4)
+
 
         # Concatenate the joint positions and the quaternion along the second dimension (columns)
         observations = torch.cat((joint_pos_observations, root_quat), dim=1)
@@ -282,12 +287,15 @@ class Q1MiniEnv(DirectRLEnv):
 
         energy_penalty = self.cfg.rew_scale_energy * electricity_cost
 
+        unrealistic_ref_penalty = self.cfg.pen_scale_unrealistic *torch.sum(self.action_errors)
+
 
         return (self.progress_reward
                 + heading_reward
                 + up_reward
                 - energy_penalty
                 # - std_penalty
+                - unrealistic_ref_penalty       #Penalizes actor for having unrealistic servo position references
         )
 
     def _get_dones(self) -> tuple[torch.Tensor, torch.Tensor]:
