@@ -172,9 +172,9 @@ class Q1MiniEnv(DirectRLEnv):
         # Randomize target positions
         # This creates random targets in the xy-plane within a circle of radius 10 around the origin
         angles = torch.rand(self.num_envs, device=self.sim.device) * 2 * torch.pi
-        radii = torch.sqrt(torch.rand(self.num_envs, device=self.sim.device)) * 1000  # sqrt for uniform distribution
+        self.radii = torch.sqrt(torch.rand(self.num_envs, device=self.sim.device)) * 1000  # sqrt for uniform distribution
         self.targets = torch.stack(
-            (radii * torch.cos(angles), radii * torch.sin(angles), torch.zeros(self.num_envs, device=self.sim.device)),
+            (self.radii * torch.cos(angles), self.radii * torch.sin(angles), torch.zeros(self.num_envs, device=self.sim.device)),
             dim=1)
         self.targets += self.scene.env_origins
         self.start_rotation = torch.tensor([1, 0, 0, 0], device=self.sim.device, dtype=torch.float32)
@@ -265,7 +265,6 @@ class Q1MiniEnv(DirectRLEnv):
         # Extract the xy components of the heading and target vectors
         heading_xy = self.heading_vec[:, :2]  # Taking the x and y components
         target_xy = self.targets[:, :2]/1000  # Taking the x and y components
-        # print(target_xy)
 
         # Concatenate the joint positions, quaternion, and xy components of heading and target
         observations = torch.cat((joint_pos_observations, root_quat, heading_xy, target_xy), dim=1)
@@ -310,7 +309,7 @@ class Q1MiniEnv(DirectRLEnv):
 
 
 
-        return (self.progress_reward
+        return (self.progress_reward/self.radii*1000
                 + heading_reward
                 + up_reward
                 - energy_penalty
