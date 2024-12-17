@@ -115,7 +115,7 @@ class Q1MiniEnvCfg(DirectRLEnvCfg):
     decimation = 2
     action_scale = 1
     action_space = 8            # 8 servo position references
-    observation_space = 20       # 16 previous joints positions + quaternion orientation
+    observation_space = 24       # 16 previous joints positions + quaternion orientation
     state_space = 0
     time_steps = episode_length_s*60
 
@@ -138,10 +138,10 @@ class Q1MiniEnvCfg(DirectRLEnvCfg):
     rew_scale_progress = 1.0
     rew_scale_heading = 0.5
     rew_scale_upright = 0.10
-    rew_scale_energy = 0.05
+    rew_scale_energy = 0.005
     pen_scale_symmetry = 0.0001
     pen_scale_unrealistic = 0.0001
-    pen_scale_neutral = 0.5           #Penalty for deviations from servo neutral positions
+    pen_scale_neutral = 0.050           #Penalty for deviations from servo neutral positions
     termination_height=0.032
 
 
@@ -161,14 +161,21 @@ class Q1MiniEnv(DirectRLEnv):
         self.action_scale = self.cfg.action_scale
         self.prev_joint_positions = torch.zeros((self.num_envs, len(self.cfg.dof_names), 2), device=self.sim.device)
         self.up_vec = torch.tensor([0, 0, 1], dtype=torch.float32, device=self.sim.device).repeat((self.num_envs, 1))
-        self.heading_vec = torch.tensor([0, 1, 0], dtype=torch.float32, device=self.sim.device).repeat(
-            (self.num_envs, 1)
-        )
         self.potentials = torch.zeros(self.num_envs, dtype=torch.float32, device=self.sim.device)
         self.prev_potentials = torch.zeros_like(self.potentials)
-        self.targets = torch.tensor([0, 1000, 0], dtype=torch.float32, device=self.sim.device).repeat(
-            (self.num_envs, 1)
-        )
+
+        # Randomize heading vectors in the xy-plane
+        angles = torch.rand(self.num_envs, device=self.sim.device) * 2 * torch.pi
+        self.heading_vec = torch.stack(
+            (torch.cos(angles), torch.sin(angles), torch.zeros(self.num_envs, device=self.sim.device)), dim=1)
+
+        # Randomize target positions
+        # This creates random targets in the xy-plane within a circle of radius 1000 around the origin
+        angles = torch.rand(self.num_envs, device=self.sim.device) * 2 * torch.pi
+        radii = torch.sqrt(torch.rand(self.num_envs, device=self.sim.device)) * 1000  # sqrt for uniform distribution
+        self.targets = torch.stack(
+            (radii * torch.cos(angles), radii * torch.sin(angles), torch.zeros(self.num_envs, device=self.sim.device)),
+            dim=1)
         self.targets += self.scene.env_origins
         self.start_rotation = torch.tensor([1, 0, 0, 0], device=self.sim.device, dtype=torch.float32)
         self.basis_vec0 = self.heading_vec.clone()
@@ -255,9 +262,13 @@ class Q1MiniEnv(DirectRLEnv):
         # Get the quaternion representing the root orientation of the robot
         root_quat = self.robot.data.root_quat_w.clone().view(self.num_envs, 4)
 
+        # Extract the xy components of the heading and target vectors
+        heading_xy = self.heading_vec[:, :2]  # Taking the x and y components
+        target_xy = self.targets[:, :2]/1000  # Taking the x and y components
+        # print(target_xy)
 
-        # Concatenate the joint positions and the quaternion along the second dimension (columns)
-        observations = torch.cat((joint_pos_observations, root_quat), dim=1)
+        # Concatenate the joint positions, quaternion, and xy components of heading and target
+        observations = torch.cat((joint_pos_observations, root_quat, heading_xy, target_xy), dim=1)
 
         return {"policy": observations}
 
@@ -269,7 +280,8 @@ class Q1MiniEnv(DirectRLEnv):
 
         to_target = self.targets - self.robot.data.root_pos_w
         to_target[:, 2] = 0.0
-        _, self.up_proj, self.heading_proj, _, _ = compute_heading_and_up(
+        (_, self.up_proj, self.heading_proj,
+         _, _) = compute_heading_and_up(
             self.robot.data.root_quat_w, quat_conjugate(self.start_rotation).repeat((self.num_envs, 1)), to_target, self.basis_vec0, self.basis_vec1, 2
         )
         # print(self.robot.data.root_quat_w.shape)
@@ -342,6 +354,8 @@ class Q1MiniEnv(DirectRLEnv):
         self.prev_potentials[:] = self.potentials
         self.neutral_deviation_penalty = torch.zeros(self.num_envs, dtype=torch.float32, device=self.sim.device)
         self.electricity_cost = torch.zeros(self.num_envs, dtype=torch.float32, device=self.sim.device)
+        self.accum_joint_movement = torch.zeros((self.num_envs, 8), dtype=torch.float32, device=self.sim.device)
+
 
 
 
