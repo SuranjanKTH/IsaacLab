@@ -22,9 +22,9 @@ from omni.isaac.lab.utils.math import sample_uniform
 from omni.isaac.lab.actuators import ImplicitActuatorCfg
 
 
-servo_effort_limit = 2.0
+servo_effort_limit = .01
 servo_velocity_limit = 0.001
-servo_damping = 1.0
+servo_damping = 2.0
 servo_stiffness = 10.0
 Q1_CFG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
@@ -141,7 +141,7 @@ class Q1MiniEnvCfg(DirectRLEnvCfg):
     rew_scale_energy = 0.05
     pen_scale_symmetry = 0.0001
     pen_scale_unrealistic = 0.0001
-    pen_scale_neutral = 1.0           #Penalty for deviations from servo neutral positions
+    pen_scale_neutral = 0.5           #Penalty for deviations from servo neutral positions
     termination_height=0.032
 
 
@@ -174,10 +174,9 @@ class Q1MiniEnv(DirectRLEnv):
         self.basis_vec0 = self.heading_vec.clone()
         self.basis_vec1 = self.up_vec.clone()
         self.accum_joint_movement = torch.zeros((self.num_envs, 8), dtype=torch.float32, device=self.sim.device)
-        # self.neutral_positions = torch.tensor([0,60/180,0,60/180,0,-60/180,0,-60/180], dtype=torch.float32, device=self.sim.device)
         self.neutral_positions = torch.tensor([30/180, 30/180, -30/180, -30/180, 0, 0, 0, 0], dtype=torch.float32, device=self.sim.device)
         # Assuming self.num_envs is the number of parallel environments
-        # self.neutral_positions = torch.tensor([0, 0, 0, 0, 0, 0, 0, 0], dtype=torch.float32, device=self.sim.device)
+        # self.neutral_positions = torch.tensor([0, 0, 0, -1, 0, 0, 0, 0], dtype=torch.float32, device=self.sim.device)
         self.neutral_positions = self.neutral_positions.repeat(self.num_envs, 1)  # Repeat for each environment
 
         # Initialize progress_reward as a zero tensor
