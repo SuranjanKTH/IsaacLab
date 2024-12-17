@@ -28,7 +28,7 @@ servo_damping = 1.0
 servo_stiffness = 10.0
 Q1_CFG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
-        usd_path="C:/Users/Suranjan/PycharmProjects/IsaacLab/Q1_Mini/Q1_Assembly/Q1_Mini_Test.usd",
+        usd_path="C:/Users/Suranjan/AppData/Local/ov/pkg/isaac-lab/IsaacLab/Q1_Mini/Q1_Assembly/Q1_Mini_Test.usd",
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             disable_gravity=False,
             max_depenetration_velocity=10.0,
@@ -117,6 +117,7 @@ class Q1MiniEnvCfg(DirectRLEnvCfg):
     action_space = 8            # 8 servo position references
     observation_space = 20       # 16 previous joints positions + quaternion orientation
     state_space = 0
+    time_steps = episode_length_s*60
 
     # simulation
     sim: SimulationCfg = SimulationCfg(dt=1 / 60
@@ -134,13 +135,15 @@ class Q1MiniEnvCfg(DirectRLEnvCfg):
                     "Coxa_FL_Revolute_6",
                     "Coxa_BR_Revolute_8"]
 
-
+    rew_scale_progress = 1.0
     rew_scale_heading = 0.5
     rew_scale_upright = 0.10
-    rew_scale_energy = 0.001
+    rew_scale_energy = 0.005
     pen_scale_symmetry = 0.0001
     pen_scale_unrealistic = 0.0001
+    pen_scale_neutral = 0.5           #Penalty for deviations from servo neutral positions
     termination_height=0.032
+
 
     # Scene
     scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=2048, env_spacing=.50, replicate_physics=True)
@@ -171,6 +174,10 @@ class Q1MiniEnv(DirectRLEnv):
         self.basis_vec0 = self.heading_vec.clone()
         self.basis_vec1 = self.up_vec.clone()
         self.accum_joint_movement = torch.zeros((self.num_envs, 8), dtype=torch.float32, device=self.sim.device)
+        self.neutral_positions = torch.tensor([0,30/180,0,30/180,0,-30/180,0,-30/180], dtype=torch.float32, device=self.sim.device)
+        # self.neutral_positions = torch.tensor([0, 0, 0, 0, 0, 0, 0, 0], dtype=torch.float32, device=self.sim.device)
+        self.neutral_deviation_penalty = torch.zeros(self.num_envs, dtype=torch.float32, device=self.sim.device)
+        self.electricity_cost = torch.zeros(self.num_envs, dtype=torch.float32, device=self.sim.device)
 
         # Initialize progress_reward as a zero tensor
         # self.heading_proj = torch.zeros(self.num_envs, device=self.sim.device)
@@ -231,6 +238,14 @@ class Q1MiniEnv(DirectRLEnv):
 
         self.motor_effort = self.robot._data.applied_torque
 
+        self.neutral_deviation_penalty += self.cfg.pen_scale_neutral * torch.mean(
+            torch.abs(self.robot.data.joint_pos),dim=-1,)
+
+        self.electricity_cost +=torch.mean(
+            torch.abs(self.motor_effort * (self.actions - self.prev_joint_positions[:, :, 0])),
+            dim=-1,
+        )
+
 
 
     def _get_observations(self) -> dict:
@@ -250,7 +265,7 @@ class Q1MiniEnv(DirectRLEnv):
         # velocity = self.robot.data.root_lin_vel_w  # Assuming velocity along x-direction is desired
 
         # Simple reward function that rewards forward movement and correct heading
-        self.progress_reward = self.potentials - self.prev_potentials
+        self.progress_reward = (self.potentials - self.prev_potentials)*self.cfg.rew_scale_progress
 
         to_target = self.targets - self.robot.data.root_pos_w
         to_target[:, 2] = 0.0
@@ -279,20 +294,20 @@ class Q1MiniEnv(DirectRLEnv):
 
 
 
-        electricity_cost = torch.sum(
-            torch.abs(self.motor_effort *(self.actions - self.prev_joint_positions[:, :, 0]) ),
-            dim = -1,
-        )
 
-        energy_penalty = self.cfg.rew_scale_energy * electricity_cost
+        energy_penalty = self.cfg.rew_scale_energy * self.electricity_cost
 
         unrealistic_ref_penalty = self.cfg.pen_scale_unrealistic *torch.sum(self.action_errors)
+        # print(self.neutral_deviation_penalty.shape)
+
+
 
 
         return (self.progress_reward
                 + heading_reward
                 + up_reward
                 - energy_penalty
+                - self.neutral_deviation_penalty
                 # - std_penalty
                 # - unrealistic_ref_penalty       #Penalizes actor for having unrealistic servo position references
         )
@@ -330,6 +345,8 @@ class Q1MiniEnv(DirectRLEnv):
         to_target[:, 2] = 0.0
         self.potentials[env_ids] = -torch.norm(to_target, p=2, dim=-1) / self.cfg.sim.dt
         self.prev_potentials[:] = self.potentials
+        self.neutral_deviation_penalty = torch.zeros(self.num_envs, dtype=torch.float32, device=self.sim.device)
+        self.electricity_cost = torch.zeros(self.num_envs, dtype=torch.float32, device=self.sim.device)
 
 
 
