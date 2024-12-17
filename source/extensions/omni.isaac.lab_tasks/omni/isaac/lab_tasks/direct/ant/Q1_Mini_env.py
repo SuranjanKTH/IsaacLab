@@ -136,7 +136,7 @@ class Q1MiniEnvCfg(DirectRLEnvCfg):
                     "Coxa_BR_Revolute_8"]
 
     rew_scale_progress = 1.0
-    rew_scale_heading = 0.5
+    rew_scale_heading = 0.05
     rew_scale_upright = 0.10
     rew_scale_energy = 0.005
     pen_scale_symmetry = 0.0001
@@ -170,7 +170,7 @@ class Q1MiniEnv(DirectRLEnv):
             (torch.cos(angles), torch.sin(angles), torch.zeros(self.num_envs, device=self.sim.device)), dim=1)
 
         # Randomize target positions
-        # This creates random targets in the xy-plane within a circle of radius 1000 around the origin
+        # This creates random targets in the xy-plane within a circle of radius 10 around the origin
         angles = torch.rand(self.num_envs, device=self.sim.device) * 2 * torch.pi
         radii = torch.sqrt(torch.rand(self.num_envs, device=self.sim.device)) * 1000  # sqrt for uniform distribution
         self.targets = torch.stack(
@@ -181,7 +181,7 @@ class Q1MiniEnv(DirectRLEnv):
         self.basis_vec0 = self.heading_vec.clone()
         self.basis_vec1 = self.up_vec.clone()
         self.accum_joint_movement = torch.zeros((self.num_envs, 8), dtype=torch.float32, device=self.sim.device)
-        self.neutral_positions = torch.tensor([60/180, 60/180, -60/180, -60/180, 0, 0, 0, 0], dtype=torch.float32, device=self.sim.device)
+        self.neutral_positions = torch.tensor([30/180, 30/180, -30/180, -30/180, 0, 0, 0, 0], dtype=torch.float32, device=self.sim.device)
         # Assuming self.num_envs is the number of parallel environments
         # self.neutral_positions = torch.tensor([0, 0, 0, -1, 0, 0, 0, 0], dtype=torch.float32, device=self.sim.device)
         self.neutral_positions = self.neutral_positions.repeat(self.num_envs, 1)  # Repeat for each environment
