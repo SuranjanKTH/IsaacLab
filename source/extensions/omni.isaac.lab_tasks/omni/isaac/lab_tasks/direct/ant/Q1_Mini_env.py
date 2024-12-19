@@ -117,7 +117,6 @@ class Q1MiniEnvCfg(DirectRLEnvCfg):
     action_space = 8            # 8 servo position references
     observation_space = 20       # 16 previous joints positions + quaternion orientation
     state_space = 0
-    time_steps = episode_length_s*60
 
     # simulation
     sim: SimulationCfg = SimulationCfg(dt=1 / 120
